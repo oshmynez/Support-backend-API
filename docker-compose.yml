@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    container_name: django_support_app
+    command: >
+      sh -c "python3 manage.py migrate &&
+             python3 manage.py runserver 0.0.0.0:8000"
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - sp_db
+
+  sp_db:
+    image: postgres:10.1-alpine
+    env_file:
+      - ./.env.dev
+
+  redis:
+    image: redis:alpine
+  celery:
+    restart: always
+    build:
+      context: .
+    command: celery -A app worker --loglevel=INFO --pool=solo
+    volumes:
+      - ./app:/app
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - sp_db
+      - redis
+      - app
